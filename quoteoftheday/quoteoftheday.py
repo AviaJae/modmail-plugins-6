@@ -3,7 +3,7 @@ from discord.ext import commands
 import requests
 from datetime import datetime
 
-class QuoteOfTheDaycommands.Cog):
+class QuoteOfTheDay(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: commands.Bot = bot
         self.quotes = {}  # Dictionary to store quotes
