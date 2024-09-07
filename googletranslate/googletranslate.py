@@ -25,7 +25,8 @@ class Translate(commands.Cog):
             translation = self.translator.translate(text)
             await ctx.send(f"Translated text: {translation}")
         except Exception as e:
-            await ctx.send(f"An error occurred: {e}")
+            # Catch and display any errors that occur
+            await ctx.send(f"An error occurred: {str(e)}")
 
 async def setup(bot):
     await bot.add_cog(Translate(bot))
