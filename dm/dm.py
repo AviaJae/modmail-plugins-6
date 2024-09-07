@@ -4,7 +4,7 @@ from discord.ext import commands
 from core import checks
 from core.models import PermissionLevel
 
-class DMPlugin(commands.Cog):
+class DirectMessages(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: commands.Bot = bot
 
@@ -31,4 +31,4 @@ class DMPlugin(commands.Cog):
             await ctx.send(f"❌ | An error occurred while trying to send the message to {user.mention}.")
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(DM(bot))
+    await bot.add_cog(DirectMessages(bot))
