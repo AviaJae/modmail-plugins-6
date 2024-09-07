@@ -1,1 +1,2 @@
-translate
+googletrans==4.0.0-rc1
+httpcore==0.17.0
