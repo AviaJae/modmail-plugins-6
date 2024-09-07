@@ -14,7 +14,8 @@ import os
 
 RURL = re.compile(r'https?:\/\/(?:www\.)?.+')
 
-class Track(wavelink.Track):
+class Track(wavelink.tracks.Track):
+    pass
     __slots__ = ('requester', 'channel', 'message')
 
     def __init__(self, id_, info, *, ctx=None):
