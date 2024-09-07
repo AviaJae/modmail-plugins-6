@@ -1,11 +1,10 @@
 import discord
 from discord.ext import commands
-from googletrans import Translator, LANGUAGES
+from translate import Translator
 
-class Translate(commands.Cog):
+class TranslatePlugin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.translator = Translator()
 
     @commands.group(invoke_without_command=True)
     async def translate(self, ctx):
@@ -21,15 +20,12 @@ class Translate(commands.Cog):
         """
         Translate a given text into the specified language.
         """
-        if lang not in LANGUAGES:
-            await ctx.send(f":x: | `{lang}` is not a valid language code. Use a valid language code like 'en', 'es', 'fr', etc.")
-            return
-        
         try:
-            translated = self.translator.translate(text, dest=lang)
-            await ctx.send(f"**Original Text:** {text}\n**Translated Text:** {translated.text}")
+            translator = Translator(to_lang=lang)
+            translated = translator.translate(text)
+            await ctx.send(f"**Original Text:** {text}\n**Translated Text:** {translated}")
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
 def setup(bot):
-    bot.add_cog(Translate(bot))
+    bot.add_cog(TranslatePlugin(bot))
