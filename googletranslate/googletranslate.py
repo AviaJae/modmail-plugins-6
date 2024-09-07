@@ -22,11 +22,21 @@ class Translate(commands.Cog):
     async def translate_text(self, ctx, *, text: str):
         """Translates the provided text to the target language."""
         try:
+            # Perform the translation
             translation = self.translator.translate(text)
-            await ctx.send(f"Translated text: {translation}")
+            # Assuming the translation library might return a generator or iterable
+            if isinstance(translation, str):
+                await ctx.send(f"Translated text: {translation}")
+            else:
+                # If translation is not a string, process accordingly
+                next_best_match = next(iter(translation), "Translation not found")
+                await ctx.send(f"Translated text: {next_best_match}")
+        except StopIteration:
+            await ctx.send("Translation not found.")
+        except KeyError:
+            await ctx.send("Translation data is missing.")
         except Exception as e:
-            # Catch and display any errors that occur
-            await ctx.send(f"An error occurred: {str(e)}")
+            await ctx.send(f"An error occurred: {e}")
 
 async def setup(bot):
     await bot.add_cog(Translate(bot))
