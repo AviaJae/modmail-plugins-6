@@ -31,4 +31,4 @@ class DMPlugin(commands.Cog):
             await ctx.send(f"❌ | An error occurred while trying to send the message to {user.mention}.")
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(DMPlugin(bot))
+    await bot.add_cog(DirectMessages(bot))
