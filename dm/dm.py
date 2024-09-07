@@ -10,7 +10,7 @@ class DMPlugin(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
-    @checks.has_permissions(PermissionLevel.REGULAR)
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     async def dm(self, ctx: commands.Context):
         """
         Send a DM to a user
