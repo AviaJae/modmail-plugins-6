@@ -688,5 +688,5 @@ class Music(commands.Cog):
               f'Server CPU: `{cpu}`\n\n' \
               f'Server Uptime: `{datetime.timedelta(milliseconds=node.stats.uptime)}`'
         await ctx.send(fmt)                       
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Music(bot))
