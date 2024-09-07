@@ -1,3 +1,1 @@
-googletrans-py==4.0.0
-httpcore==0.15.0
-httpx==0.18.0
+translate
