@@ -12,9 +12,9 @@ class MusicPlayer(commands.Cog):
         # Connect to Lavalink node
         await wavelink.NodePool.create_node(
             bot=self.bot,
-            host='127.0.0.1',  # Lavalink host
+            host='lavalink.jompo.cloud',  # Lavalink host
             port=2333,         # Lavalink port
-            password='youshallnotpass'  # Lavalink password
+            password='jompo'  # Lavalink password
         )
 
     @commands.command(name='play')
