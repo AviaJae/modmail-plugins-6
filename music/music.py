@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-import wavelink
+import aiohttp
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -9,17 +9,6 @@ class Music(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print(f"{self.__class__.__name__} has been loaded.")
-        # Attempt to connect the Lavalink node when the bot is ready
-        await self.connect_nodes()
-
-    async def connect_nodes(self):
-        """Connect to the Lavalink server nodes."""
-        try:
-            node = wavelink.Node(uri='lava-v4.ajieblogs.eu.org', port=443, password='https://dsc.gg/ajidevserver', secure=True)
-            await wavelink.NodePool.connect(client=self.bot, nodes=[node])
-            print(f"Connected to Lavalink node: {node.uri}:{node.port}")
-        except Exception as e:
-            print(f"Failed to connect to Lavalink node: {e}")
 
     @commands.command()
     async def join(self, ctx):
@@ -32,37 +21,29 @@ class Music(commands.Cog):
             if ctx.voice_client:
                 return await ctx.voice_client.move_to(channel)
             
-            await channel.connect(cls=wavelink.Player)
+            await channel.connect()
             await ctx.send(f"Joined {channel.name}.")
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
     @commands.command()
-    async def play(self, ctx, *, search: str):
-        """Play music in a voice channel."""
-        try:
-            if not ctx.voice_client:
-                await self.join(ctx)  # Join the voice channel if not already in one
+    async def play(self, ctx, url: str):
+        """Play audio from a URL in the voice channel."""
+        if not ctx.voice_client:
+            return await ctx.send("I need to be in a voice channel to play audio.")
 
-            vc = ctx.voice_client
-            if not vc:
-                return await ctx.send("I am not connected to a voice channel.")
-
-            if not wavelink.NodePool.nodes:
-                return await ctx.send("No nodes are currently connected.")
-
-            # Search for the song
-            track = await wavelink.YouTubeTrack.search(search, return_first=True)
-            if not track:
-                return await ctx.send("No tracks found.")
-
-            if not vc.is_playing():
-                await vc.play(track)
-                await ctx.send(f"Now playing: {track.title}")
-            else:
-                await ctx.send(f"Currently playing: {vc.source.title}")
-        except Exception as e:
-            await ctx.send(f"An error occurred while trying to play: {e}")
+        vc = ctx.voice_client
+        if not vc.is_playing():
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        return await ctx.send("Failed to fetch audio.")
+                    
+                    audio_source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(resp.url))
+                    vc.play(audio_source)
+                    await ctx.send(f"Now playing: {url}")
+        else:
+            await ctx.send("Already playing audio.")
 
     @commands.command()
     async def stop(self, ctx):
@@ -71,7 +52,7 @@ class Music(commands.Cog):
         if not vc or not vc.is_playing():
             return await ctx.send("No music is currently playing.")
 
-        await vc.stop()
+        vc.stop()
         await ctx.send("Playback stopped.")
 
     @commands.command()
@@ -81,7 +62,7 @@ class Music(commands.Cog):
         if not vc or not vc.is_playing():
             return await ctx.send("No music is currently playing.")
 
-        await vc.pause()
+        vc.pause()
         await ctx.send("Playback paused.")
 
     @commands.command()
@@ -91,7 +72,7 @@ class Music(commands.Cog):
         if not vc or vc.is_playing():
             return await ctx.send("No music is paused.")
 
-        await vc.resume()
+        vc.resume()
         await ctx.send("Playback resumed.")
 
     @commands.command()
@@ -103,11 +84,6 @@ class Music(commands.Cog):
 
         await vc.disconnect()
         await ctx.send("Disconnected from the voice channel.")
-
-    @commands.Cog.listener()
-    async def on_wavelink_track_exception(self, player, track, error):
-        """Handle track playback errors."""
-        await player.ctx.send(f"An error occurred while playing: {error}")
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
