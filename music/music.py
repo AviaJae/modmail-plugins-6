@@ -2,142 +2,137 @@ import discord
 from discord.ext import commands
 import wavelink
 
-class MusicPlayer(commands.Cog):
+class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.loop.create_task(self.connect_nodes())
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print(f"{self.__class__.__name__} has been loaded.")
+        # Connect the node when the bot is ready
+        await self.connect_nodes()
 
     async def connect_nodes(self):
-        await self.bot.wait_until_ready()
+        """Connect to Lavalink server nodes."""
         try:
-            # Connect to Lavalink node
             await wavelink.NodePool.create_node(
                 bot=self.bot,
-                host='lavalink.jompo.cloud',  # Lavalink host
-                port=2333,         # Lavalink port
+                host='lavalink-legacy.jompo.cloud',  # Lavalink host
+                port=2333,          # Lavalink port
                 password='jompo'  # Lavalink password
             )
+            print("Successfully connected to Lavalink node.")
         except Exception as e:
             print(f"Failed to connect to Lavalink node: {e}")
 
-    @commands.command(name='play')
-    async def play(self, ctx, *, search: str):
-        """Play a song or add it to the queue."""
+    @commands.command()
+    async def join(self, ctx):
+        """Join a voice channel."""
         try:
-            player = self.get_player(ctx)
-            query = f'ytsearch:{search}'
-            tracks = await wavelink.YouTubeTrack.search(query=query)
-
-            if not tracks:
-                return await ctx.send('No results found for your search.')
-
-            track = tracks[0]  # Play the first result
-
-            # If not connected, connect to voice or stage channel
-            if not player.is_connected():
-                await self.connect_to_channel(ctx)
-
-            await player.queue.put(track)
-            await ctx.send(f'Added {track.title} to the queue.')
-        
-        except Exception as e:
-            await ctx.send(f"An error occurred while playing: {e}")
-
-    async def connect_to_channel(self, ctx):
-        """Connect to the author's voice or stage channel."""
-        try:
+            if not ctx.author.voice:
+                return await ctx.send("You are not connected to a voice channel.")
+            
             channel = ctx.author.voice.channel
-            player = self.get_player(ctx)
-
-            # Connect to voice or stage channel
+            if ctx.voice_client:
+                return await ctx.voice_client.move_to(channel)
+            
             await channel.connect(cls=wavelink.Player)
-
-            # If it's a stage channel, request to speak
-            if isinstance(channel, discord.StageChannel):
-                await ctx.guild.me.edit(suppress=False)  # Become a speaker
-                await channel.guild.request_to_speak()  # Request to speak
-        
-        except AttributeError:
-            await ctx.send("You're not connected to a voice channel.")
+            await ctx.send(f"Joined {channel.name}.")
         except Exception as e:
-            await ctx.send(f"Failed to connect to channel: {e}")
+            await ctx.send(f"An error occurred: {e}")
 
-    @commands.command(name='pause')
+    @commands.command()
+    async def play(self, ctx, *, search: str):
+        """Play music in a voice channel."""
+        try:
+            if not ctx.voice_client:
+                await self.join(ctx)  # Join the voice channel if not already in one
+
+            vc = ctx.voice_client
+            if not vc:
+                return await ctx.send("I am not connected to a voice channel.")
+
+            # Search for the song
+            track = await wavelink.YouTubeTrack.search(search, return_first=True)
+            if not track:
+                return await ctx.send("No tracks found.")
+
+            if not vc.is_playing():
+                await vc.play(track)
+                await ctx.send(f"Now playing: {track.title}")
+            else:
+                await ctx.send(f"Currently playing: {vc.source.title}")
+        except Exception as e:
+            await ctx.send(f"An error occurred while trying to play: {e}")
+
+    @commands.command()
+    async def stop(self, ctx):
+        """Stop the currently playing track."""
+        vc = ctx.voice_client
+        if not vc or not vc.is_playing():
+            return await ctx.send("No music is currently playing.")
+
+        await vc.stop()
+        await ctx.send("Playback stopped.")
+
+    @commands.command()
     async def pause(self, ctx):
         """Pause the currently playing track."""
-        try:
-            player = self.get_player(ctx)
-            await player.pause()
-            await ctx.send('Paused the music.')
-        
-        except Exception as e:
-            await ctx.send(f"An error occurred while pausing: {e}")
+        vc = ctx.voice_client
+        if not vc or not vc.is_playing():
+            return await ctx.send("No music is currently playing.")
 
-    @commands.command(name='resume')
+        await vc.pause()
+        await ctx.send("Playback paused.")
+
+    @commands.command()
     async def resume(self, ctx):
         """Resume the currently paused track."""
+        vc = ctx.voice_client
+        if not vc or vc.is_playing():
+            return await ctx.send("No music is paused.")
+
+        await vc.resume()
+        await ctx.send("Playback resumed.")
+
+    @commands.command()
+    async def leave(self, ctx):
+        """Disconnect the bot from the voice channel."""
+        vc = ctx.voice_client
+        if not vc:
+            return await ctx.send("I am not connected to a voice channel.")
+
+        await vc.disconnect()
+        await ctx.send("Disconnected from the voice channel.")
+
+    @commands.command()
+    async def stage(self, ctx):
+        """Move the bot to a stage channel."""
         try:
-            player = self.get_player(ctx)
-            await player.resume()
-            await ctx.send('Resumed the music.')
-        
+            if not ctx.author.voice or ctx.author.voice.channel.type != discord.ChannelType.stage_voice:
+                return await ctx.send("You need to be in a stage channel to use this command.")
+
+            channel = ctx.author.voice.channel
+            if not ctx.voice_client:
+                await channel.connect(cls=wavelink.Player)
+
+            # Set the bot as a stage speaker
+            await ctx.guild.me.edit(suppress=False)
+            await ctx.send(f"Connected to stage: {channel.name}.")
         except Exception as e:
-            await ctx.send(f"An error occurred while resuming: {e}")
+            await ctx.send(f"An error occurred: {e}")
 
-    @commands.command(name='skip')
-    async def skip(self, ctx):
-        """Skip the current track."""
-        try:
-            player = self.get_player(ctx)
-            await player.stop()
-            await ctx.send('Skipped the track.')
-        
-        except Exception as e:
-            await ctx.send(f"An error occurred while skipping: {e}")
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, player, track, reason):
+        """Automatically disconnect after the track ends."""
+        if reason == 'FINISHED':
+            await player.disconnect()
 
-    @commands.command(name='queue')
-    async def queue(self, ctx):
-        """Show the current music queue."""
-        try:
-            player = self.get_player(ctx)
-            if player.queue.is_empty:
-                return await ctx.send('The queue is empty.')
+    @commands.Cog.listener()
+    async def on_wavelink_track_exception(self, player, track, error):
+        """Handle track playback errors."""
+        await player.ctx.send(f"An error occurred while playing: {error}")
 
-            queue = '\n'.join([track.title for track in player.queue._queue])
-            await ctx.send(f'Queue:\n{queue}')
-        
-        except Exception as e:
-            await ctx.send(f"An error occurred while fetching the queue: {e}")
-
-    @commands.command(name='playlist')
-    async def playlist(self, ctx, playlist_name: str):
-        """Play a playlist from YouTube."""
-        try:
-            player = self.get_player(ctx)
-            query = f'ytsearch:{playlist_name} playlist'
-            tracks = await wavelink.YouTubeTrack.search(query=query)
-
-            if not tracks:
-                return await ctx.send('No playlist found.')
-
-            if not player.is_connected():
-                await self.connect_to_channel(ctx)
-
-            for track in tracks:
-                await player.queue.put(track)
-
-            await ctx.send(f'Added playlist {playlist_name} to the queue.')
-        
-        except Exception as e:
-            await ctx.send(f"An error occurred while adding the playlist: {e}")
-
-    def get_player(self, ctx):
-        """Gets the current player or creates one."""
-        return self.bot.wavelink.get_player(ctx.guild.id, cls=wavelink.Player)
 
 async def setup(bot):
-    try:
-        await bot.add_cog(MusicPlayer(bot))
-        print("Music Player cog loaded successfully.")
-    except Exception as e:
-        print(f"Failed to load Music Player cog: {e}")
+    await bot.add_cog(Music(bot))
