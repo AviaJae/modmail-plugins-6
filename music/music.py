@@ -15,7 +15,7 @@ class Music(commands.Cog):
     async def connect_nodes(self):
         """Connect to the Lavalink server nodes."""
         try:
-            node = wavelink.Node(uri='lava-all.ajieblogs.eu.org', port=443, password='https://dsc.gg/ajidevserver', secure=True)
+            node = wavelink.Node(uri='lava-v4.ajieblogs.eu.org', port=443, password='https://dsc.gg/ajidevserver', secure=True)
             await wavelink.NodePool.connect(client=self.bot, nodes=[node])
             print(f"Connected to Lavalink node: {node.uri}:{node.port}")
         except Exception as e:
