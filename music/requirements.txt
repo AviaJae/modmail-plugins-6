@@ -1,2 +1,2 @@
-wavelink>=1.0.0
+wavelink>=1.4.1
 aiohttp
