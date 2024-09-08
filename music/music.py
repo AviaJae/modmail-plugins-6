@@ -21,7 +21,7 @@ class Music(commands.Cog):
                 host='v3.lavalink.rocks',  # Lavalink host
                 port=443,          # Lavalink port
                 password='horizxon.tech',  # Lavalink password
-                secure='true' #Lavalink security
+                secure=True #Lavalink security
             )
             print(f"Connected to Lavalink node: {node.host}:{node.port}")
         except Exception as e:
