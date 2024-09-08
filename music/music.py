@@ -18,9 +18,10 @@ class Music(commands.Cog):
             # Connect to your Lavalink server
             node = await wavelink.NodePool.create_node(
                 bot=self.bot,
-                host='lavalink-legacy.jompo.cloud',  # Lavalink host
-                port=2333,          # Lavalink port
-                password='jompo'  # Lavalink password
+                host='v3.lavalink.rocks',  # Lavalink host
+                port=443,          # Lavalink port
+                password='horizxon.tech',  # Lavalink password
+                secure='true' #Lavalink security
             )
             print(f"Connected to Lavalink node: {node.host}:{node.port}")
         except Exception as e:
