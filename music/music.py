@@ -9,19 +9,21 @@ class Music(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print(f"{self.__class__.__name__} has been loaded.")
-        # Connect the node when the bot is ready
+        # Attempt to connect the Lavalink node when the bot is ready
         await self.connect_nodes()
 
     async def connect_nodes(self):
-        """Connect to Lavalink server nodes."""
+        """Connect to the Lavalink server nodes."""
         try:
-            await wavelink.NodePool.create_node(
+            # Connect to your Lavalink server
+            node = await wavelink.NodePool.create_node(
                 bot=self.bot,
-                host='lavalink-legacy.jompo.cloud',  # Lavalink host
+                host='127.0.0.1',  # Lavalink host
                 port=2333,          # Lavalink port
-                password='jompo'  # Lavalink password
+                password='youshallnotpass',  # Lavalink password
+                region='us_central'  # Specify server region if needed
             )
-            print("Successfully connected to Lavalink node.")
+            print(f"Connected to Lavalink node: {node.host}:{node.port}")
         except Exception as e:
             print(f"Failed to connect to Lavalink node: {e}")
 
@@ -51,6 +53,9 @@ class Music(commands.Cog):
             vc = ctx.voice_client
             if not vc:
                 return await ctx.send("I am not connected to a voice channel.")
+
+            if not wavelink.NodePool.nodes:
+                return await ctx.send("No nodes are currently connected.")
 
             # Search for the song
             track = await wavelink.YouTubeTrack.search(search, return_first=True)
@@ -104,29 +109,6 @@ class Music(commands.Cog):
 
         await vc.disconnect()
         await ctx.send("Disconnected from the voice channel.")
-
-    @commands.command()
-    async def stage(self, ctx):
-        """Move the bot to a stage channel."""
-        try:
-            if not ctx.author.voice or ctx.author.voice.channel.type != discord.ChannelType.stage_voice:
-                return await ctx.send("You need to be in a stage channel to use this command.")
-
-            channel = ctx.author.voice.channel
-            if not ctx.voice_client:
-                await channel.connect(cls=wavelink.Player)
-
-            # Set the bot as a stage speaker
-            await ctx.guild.me.edit(suppress=False)
-            await ctx.send(f"Connected to stage: {channel.name}.")
-        except Exception as e:
-            await ctx.send(f"An error occurred: {e}")
-
-    @commands.Cog.listener()
-    async def on_wavelink_track_end(self, player, track, reason):
-        """Automatically disconnect after the track ends."""
-        if reason == 'FINISHED':
-            await player.disconnect()
 
     @commands.Cog.listener()
     async def on_wavelink_track_exception(self, player, track, error):
