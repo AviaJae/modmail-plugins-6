@@ -15,15 +15,9 @@ class Music(commands.Cog):
     async def connect_nodes(self):
         """Connect to the Lavalink server nodes."""
         try:
-            # Connect to your Lavalink server
-            node = await wavelink.NodePool.create_node(
-                bot=self.bot,
-                host='v3.lavalink.rocks',  # Lavalink host
-                port=443,          # Lavalink port
-                password='horizxon.tech',  # Lavalink password
-                secure=True #Lavalink security
-            )
-            print(f"Connected to Lavalink node: {node.host}:{node.port}")
+            node = wavelink.Node(uri='v3.lavalink.rocks', port=443, password='horizxon.tech', secure=True)
+            await wavelink.NodePool.connect(client=self.bot, nodes=[node])
+            print(f"Connected to Lavalink node: {node.uri}:{node.port}")
         except Exception as e:
             print(f"Failed to connect to Lavalink node: {e}")
 
@@ -114,7 +108,6 @@ class Music(commands.Cog):
     async def on_wavelink_track_exception(self, player, track, error):
         """Handle track playback errors."""
         await player.ctx.send(f"An error occurred while playing: {error}")
-
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
