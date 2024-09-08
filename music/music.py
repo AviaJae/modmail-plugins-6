@@ -1,16 +1,12 @@
 import discord
 from discord.ext import commands
-import asyncio
-import nacl
-import random
-import os
+import wavelink
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.music_queues = {}  # Dictionary to hold music queues for each voice channel
         self.current_players = {}  # Dictionary to track who is playing the music
-        self.default_prefix = "!"  # Define your command prefix here
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -19,8 +15,17 @@ class Music(commands.Cog):
 
     async def connect_nodes(self):
         """Connect to your Lavalink server."""
-        # Implement your Lavalink node connection setup here
-        pass
+        try:
+            node = await wavelink.NodePool.create_node(
+                bot=self.bot,
+                host='lava-v3.ajieblogs.eu.org',  # Lavalink host
+                port=433,          # Lavalink port
+                password='https://dsc.gg/ajidevserver',  # Lavalink password
+                secure=True  # Set to True if using HTTPS
+            )
+            print(f"Connected to Lavalink node: {node.host}:{node.port}")
+        except Exception as e:
+            print(f"Failed to connect to Lavalink node: {e}")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -50,9 +55,11 @@ class Music(commands.Cog):
                 return await ctx.send("No Lavalink nodes are currently connected.")
 
             # Search for the song
-            track = await wavelink.YouTubeTrack.search(search, return_first=True)
-            if not track:
+            tracks = await wavelink.YouTubeTrack.search(search, return_first=False)
+            if not tracks:
                 return await ctx.send("No tracks found.")
+
+            track = tracks[0]  # Get the first track in the search results
 
             if ctx.voice_client.id not in self.music_queues:
                 self.music_queues[ctx.voice_client.id] = []
@@ -76,6 +83,8 @@ class Music(commands.Cog):
             track = self.music_queues[ctx.voice_client.id].pop(0)
             await vc.play(track)
             await ctx.send(f"Now playing: {track.title}")
+        else:
+            await ctx.send("Queue is empty.")
 
     @commands.command()
     async def pause(self, ctx):
