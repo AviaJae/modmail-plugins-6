@@ -18,6 +18,7 @@ class DirectMessages(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @dm.command()
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     async def send(self, ctx: commands.Context, user: discord.User, *, message: str):
         """
         Send a direct message to a user
