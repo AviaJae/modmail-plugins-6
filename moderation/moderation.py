@@ -10,6 +10,9 @@ class Moderation(commands.Cog):
         self.logging_channel = None
         self.log_all = True  # If true, logs all actions, otherwise logs specific actions
         self.log_actions = set()  # Contains specific actions to log if `log_all` is False
+        self.member_actions = {}  # Dictionary to track actions for each member
+        self.warning_id_counter = 0  # Counter to generate unique warning IDs
+        self.warnings = {}  # Dictionary to track warnings with their IDs
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
@@ -115,29 +118,65 @@ class Moderation(commands.Cog):
     @checks.has_permissions(PermissionLevel.MODERATOR)
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str = None):
         """
-        Warn a member.
+        Warn a member and send an embed message in their DM.
         """
-        await ctx.send(f"⚠️ | {member.mention} has been warned for: {reason}")
-        await self.log_action(ctx.guild, f"{member} was warned for: {reason}")
+        self.warning_id_counter += 1
+        warning_id = self.warning_id_counter
+
+        # Track the warning
+        if member.id not in self.member_actions:
+            self.member_actions[member.id] = []
+        self.member_actions[member.id].append((warning_id, reason))
+
+        # Send DM with warning details
+        embed = discord.Embed(
+            title="You Have Been Warned",
+            description=f"**Reason:** {reason}\n**Warning ID:** {warning_id}",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="AirAsia Group RBLX")
+        try:
+            await member.send(embed=embed)
+        except discord.Forbidden:
+            await ctx.send(f"⚠️ | Could not send a DM to {member.mention}.")
+
+        # Log the warning in the channel
+        await ctx.send(f"⚠️ | {member.mention} has been warned for: {reason}\nWarning ID: {warning_id}")
+        await self.log_action(ctx.guild, f"{member} was warned for: {reason} (ID: {warning_id})")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def unwarn(self, ctx: commands.Context, member: discord.Member):
+    async def unwarn(self, ctx: commands.Context, member: discord.Member, warning_id: int):
         """
-        Remove a warning from a member.
+        Remove a warning from a member based on its ID.
         """
-        await ctx.send(f"⚠️ | {member.mention}'s warning has been removed.")
-        await self.log_action(ctx.guild, f"{member}'s warning was removed.")
+        if member.id in self.member_actions:
+            warnings = self.member_actions[member.id]
+            self.member_actions[member.id] = [w for w in warnings if w[0] != warning_id]
+
+            # Inform user
+            await ctx.send(f"⚠️ | Warning ID {warning_id} has been removed from {member.mention}.")
+            await self.log_action(ctx.guild, f"Warning ID {warning_id} was removed from {member}.")
+
+        else:
+            await ctx.send(f"❌ | {member.mention} does not have any warnings.")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def purge(self, ctx: commands.Context, amount: int):
+    async def checkwarnings(self, ctx: commands.Context, member: discord.Member):
         """
-        Purge a large number of messages from the channel.
+        Check the warnings for a member.
         """
-        await ctx.channel.purge(limit=amount)
-        await ctx.send(f"🧹 | Purged {amount} messages.", delete_after=5)
-        await self.log_action(ctx.guild, f"Purged {amount} messages in {ctx.channel}.")
+        if member.id in self.member_actions:
+            warnings = self.member_actions[member.id]
+            if warnings:
+                response = "\n".join([f"ID: {w[0]}, Reason: {w[1]}" for w in warnings])
+            else:
+                response = "No warnings found."
+        else:
+            response = "No warnings found."
+
+        await ctx.send(f"Warnings for {member.mention}:\n{response}")
 
     async def log_action(self, guild: discord.Guild, message: str):
         """
