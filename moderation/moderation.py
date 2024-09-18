@@ -93,8 +93,7 @@ class Moderation(commands.Cog):
         Ban a member from the server.
         """
         if member == ctx.author:
-            return await ctx.send("❌ | You cannot take action on yourself.")
-
+            return await ctx.send("❌ | You cannot ban yourself.")
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
@@ -119,8 +118,7 @@ class Moderation(commands.Cog):
         Kick a member from the server.
         """
         if member == ctx.author:
-            return await ctx.send("❌ | You cannot take action on yourself.")
-
+            return await ctx.send("❌ | You cannot kick yourself.")
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
@@ -135,16 +133,13 @@ class Moderation(commands.Cog):
         Timeout a member for a specific duration (in minutes).
         """
         if member == ctx.author:
-            return await ctx.send("❌ | You cannot take action on yourself.")
-
+            return await ctx.send("❌ | You cannot timeout yourself.")
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
         timeout_until = datetime.datetime.utcnow() + datetime.timedelta(minutes=duration)
         await member.timeout(until=timeout_until, reason=reason)
-        await ctx.send(f"⏲️ | {member.mention} has been timed out for {duration} minutes.")
         
-        # Send DM to the member with timeout details
         embed = discord.Embed(
             title="You Have Been Timed Out",
             description=f"**Reason:** {reason}\n**Duration:** {duration} minutes",
@@ -155,8 +150,59 @@ class Moderation(commands.Cog):
             await member.send(embed=embed)
         except discord.Forbidden:
             await ctx.send(f"⚠️ | Could not send a DM to {member.mention}.")
-
+        
+        await ctx.send(f"⏲️ | {member.mention} has been timed out for {duration} minutes.")
         await self.log_action(ctx.guild, f"{member} was timed out for {duration} minutes for: {reason}")
+
+    @commands.command()
+    @checks.has_permissions(PermissionLevel.MODERATOR)
+    async def untimeout(self, ctx: commands.Context, member: discord.Member):
+        """
+        Lift a timeout from a member.
+        """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot untimeout yourself.")
+        if not self.has_higher_role(ctx, member):
+            return await self.send_permission_error(ctx)
+
+        if member.timed_out_until:
+            await member.edit(timeout=None)
+            await ctx.send(f"✅ | Timeout for {member.mention} has been lifted.")
+            await self.log_action(ctx.guild, f"{member}'s timeout was lifted.")
+        else:
+            await ctx.send(f"❌ | {member.mention} is not currently timed out.")
+
+    @commands.command()
+    @checks.has_permissions(PermissionLevel.MODERATOR)
+    async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str = None):
+        """
+        Warn a member and send a warning ID.
+        """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot warn yourself.")
+        if not self.has_higher_role(ctx, member):
+            return await self.send_permission_error(ctx)
+        
+        self.warning_id_counter += 1
+        warning_id = self.warning_id_counter
+
+        if member.id not in self.member_actions:
+            self.member_actions[member.id] = []
+        self.member_actions[member.id].append((warning_id, reason))
+
+        embed = discord.Embed(
+            title="You Have Been Warned",
+            description=f"**Reason:** {reason}\n**Warning ID:** {warning_id}",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="AirAsia Group RBLX")
+        try:
+            await member.send(embed=embed)
+        except discord.Forbidden:
+            await ctx.send(f"⚠️ | Could not send a DM to {member.mention}.")
+
+        await ctx.send(f"⚠️ | {member.mention} has been warned for: {reason}\nWarning ID: {warning_id}")
+        await self.log_action(ctx.guild, f"{member} was warned for: {reason} (ID: {warning_id})")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
@@ -165,59 +211,55 @@ class Moderation(commands.Cog):
         Remove a warning from a member by its ID.
         """
         if member == ctx.author:
-            return await ctx.send("❌ | You cannot take action on yourself.")
-
+            return await ctx.send("❌ | You cannot unwarn yourself.")
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
         if member.id in self.member_actions:
             warnings = self.member_actions[member.id]
-            if any(w[0] == warning_id for w in warnings):
-                self.member_actions[member.id] = [w for w in warnings if w[0] != warning_id]
-                await ctx.send(f"⚠️ | Warning ID {warning_id} has been removed from {member.mention}.")
+            # Find and remove the warning with the given ID
+            warnings = [w for w in warnings if w[0] != warning_id]
+            if len(warnings) < len(self.member_actions[member.id]):
+                self.member_actions[member.id] = warnings
+                await ctx.send(f"✅ | Warning ID {warning_id} has been removed from {member.mention}.")
                 await self.log_action(ctx.guild, f"Warning ID {warning_id} was removed from {member}.")
             else:
                 await ctx.send(f"❌ | Warning ID {warning_id} not found for {member.mention}.")
         else:
-            await ctx.send(f"❌ | {member.mention} does not have any warnings.")
+            await ctx.send(f"❌ | {member.mention} has no warnings.")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def untimeout(self, ctx: commands.Context, member: discord.Member):
+    async def purge(self, ctx: commands.Context, limit: int):
         """
-        Remove the timeout from a member.
+        Purge a number of messages from the channel.
         """
-        if member == ctx.author:
-            return await ctx.send("❌ | You cannot take action on yourself.")
+        if not (1 <= limit <= 100):
+            return await ctx.send("❌ | You can only purge between 1 and 100 messages.")
+        
+        try:
+            deleted = await ctx.channel.purge(limit=limit)
+            await ctx.send(f"🗑️ | Deleted {len(deleted)} messages.", delete_after=5)
+        except discord.Forbidden:
+            await ctx.send("❌ | I do not have permission to delete messages in this channel.")
+        except discord.HTTPException as e:
+            await ctx.send(f"❌ | Failed to delete messages: {str(e)}")
 
-        if not self.has_higher_role(ctx, member):
-            return await self.send_permission_error(ctx)
-
-        await member.edit(timed_out_until=None)  # Remove timeout
-        await ctx.send(f"✅ | Timeout has been removed for {member.mention}.")
-
-        # Log the untimeout action
-        await self.log_action(ctx.guild, f"Timeout removed from {member}.")
-
-    @commands.command()
-    @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def purge(self, ctx: commands.Context, amount: int):
+    async def log_action(self, guild: discord.Guild, action: str):
         """
-        Purge a large number of messages from the channel.
-        """
-        await ctx.channel.purge(limit=amount)
-        await ctx.send(f"🧹 | Purged {amount} messages.", delete_after=5)
-        await self.log_action(ctx.guild, f"Purged {amount} messages in {ctx.channel}.")
-
-    async def log_action(self, guild: discord.Guild, message: str):
-        """
-        Log an action if logging is enabled and the appropriate settings are in place.
+        Log moderation actions to the specified logging channel.
         """
         if not self.logging_channel:
             return
-
-        if self.log_all or message.split()[0].lower() in self.log_actions:
-            await self.logging_channel.send(f"📝 | {message}")
+        
+        embed = discord.Embed(
+            title="Moderation Action",
+            description=action,
+            color=discord.Color.blurple(),
+            timestamp=datetime.datetime.utcnow()
+        )
+        embed.set_footer(text=f"Action by {self.bot.user.name}")
+        await self.logging_channel.send(embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Moderation(bot))
