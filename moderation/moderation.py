@@ -129,7 +129,7 @@ class Moderation(commands.Cog):
         await ctx.send(f"👢 | {member.mention} has been kicked.")
         await self.log_action(ctx.guild, f"{member} was kicked for: {reason}")
 
-    @commands.command()
+      @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
     async def timeout(self, ctx: commands.Context, member: discord.Member, duration: int, *, reason: str = None):
         """
@@ -138,40 +138,31 @@ class Moderation(commands.Cog):
         if member == ctx.author:
             await ctx.send("❌ | You cannot timeout yourself.")
             return
+        
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
         timeout_until = discord.utils.utcnow() + datetime.timedelta(minutes=duration)
-        await member.edit(timeout_until=timeout_until, reason=reason)
+        await member.edit(timed_out_until=timeout_until, reason=reason)
         await ctx.send(f"⏲️ | {member.mention} has been timed out for {duration} minutes.")
         await self.log_action(ctx.guild, f"{member} was timed out for {duration} minutes for: {reason}")
-
-        embed = discord.Embed(
-            title="You Have Been Timed Out",
-            description=f"**Reason:** {reason}\n**Timeout Until:** {timeout_until.isoformat()}",
-            color=discord.Color.red()
-        )
-        embed.set_footer(text="AirAsia Group RBLX")
-        try:
-            await member.send(embed=embed)
-        except discord.Forbidden:
-            await ctx.send(f"⚠️ | Could not send a DM to {member.mention}.")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
     async def untimeout(self, ctx: commands.Context, member: discord.Member):
         """
-        Remove a timeout from a member.
+        Remove timeout from a member.
         """
         if member == ctx.author:
             await ctx.send("❌ | You cannot untimeout yourself.")
             return
+
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
-        
-        await member.edit(timeout_until=None)
-        await ctx.send(f"✅ | {member.mention}'s timeout has been removed.")
-        await self.log_action(ctx.guild, f"{member}'s timeout was removed.")
+
+        await member.edit(timed_out_until=None, reason="Timeout removed")
+        await ctx.send(f"✅ | Timeout removed from {member.mention}.")
+        await self.log_action(ctx.guild, f"Timeout removed from {member}.")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
