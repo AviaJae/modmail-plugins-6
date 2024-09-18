@@ -177,8 +177,14 @@ class Moderation(commands.Cog):
         
         if member.id in self.member_actions:
             warnings = self.member_actions[member.id]
-            self.member_actions[member.id] = [w for w in warnings if w[0] != warning_id]
+            # Filter out warnings with the given ID
+            new_warnings = [w for w in warnings if w[0] != warning_id]
 
+            if len(new_warnings) == len(warnings):
+                await ctx.send(f"❌ | No warning with ID {warning_id} found for {member.mention}.")
+                return
+
+            self.member_actions[member.id] = new_warnings
             await ctx.send(f"⚠️ | Warning ID {warning_id} has been removed from {member.mention}.")
             await self.log_action(ctx.guild, f"Warning ID {warning_id} was removed from {member}.")
         else:
