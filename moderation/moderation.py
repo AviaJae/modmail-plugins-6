@@ -214,8 +214,8 @@ class Moderation(commands.Cog):
         """
         if member == ctx.author:
             await ctx.send("❌ | You cannot unwarn yourself.")
+            return
 
-return
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
