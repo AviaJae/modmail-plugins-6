@@ -92,6 +92,9 @@ class Moderation(commands.Cog):
         """
         Ban a member from the server.
         """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot take action on yourself.")
+
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
@@ -115,6 +118,9 @@ class Moderation(commands.Cog):
         """
         Kick a member from the server.
         """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot take action on yourself.")
+
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
@@ -128,33 +134,20 @@ class Moderation(commands.Cog):
         """
         Timeout a member for a specific duration (in minutes).
         """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot take action on yourself.")
+
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
         timeout_until = datetime.datetime.utcnow() + datetime.timedelta(minutes=duration)
         await member.timeout(until=timeout_until, reason=reason)
         await ctx.send(f"⏲️ | {member.mention} has been timed out for {duration} minutes.")
-        await self.log_action(ctx.guild, f"{member} was timed out for {duration} minutes for: {reason}")
-
-    @commands.command()
-    @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str = None):
-        """
-        Warn a member and send a warning ID.
-        """
-        if not self.has_higher_role(ctx, member):
-            return await self.send_permission_error(ctx)
         
-        self.warning_id_counter += 1
-        warning_id = self.warning_id_counter
-
-        if member.id not in self.member_actions:
-            self.member_actions[member.id] = []
-        self.member_actions[member.id].append((warning_id, reason))
-
+        # Send DM to the member with timeout details
         embed = discord.Embed(
-            title="You Have Been Warned",
-            description=f"**Reason:** {reason}\n**Warning ID:** {warning_id}",
+            title="You Have Been Timed Out",
+            description=f"**Reason:** {reason}\n**Duration:** {duration} minutes",
             color=discord.Color.red()
         )
         embed.set_footer(text="AirAsia Group RBLX")
@@ -163,8 +156,7 @@ class Moderation(commands.Cog):
         except discord.Forbidden:
             await ctx.send(f"⚠️ | Could not send a DM to {member.mention}.")
 
-        await ctx.send(f"⚠️ | {member.mention} has been warned for: {reason}\nWarning ID: {warning_id}")
-        await self.log_action(ctx.guild, f"{member} was warned for: {reason} (ID: {warning_id})")
+        await self.log_action(ctx.guild, f"{member} was timed out for {duration} minutes for: {reason}")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
@@ -172,23 +164,40 @@ class Moderation(commands.Cog):
         """
         Remove a warning from a member by its ID.
         """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot take action on yourself.")
+
         if not self.has_higher_role(ctx, member):
             return await self.send_permission_error(ctx)
         
         if member.id in self.member_actions:
             warnings = self.member_actions[member.id]
-            # Filter out warnings with the given ID
-            new_warnings = [w for w in warnings if w[0] != warning_id]
-
-            if len(new_warnings) == len(warnings):
-                await ctx.send(f"❌ | No warning with ID {warning_id} found for {member.mention}.")
-                return
-
-            self.member_actions[member.id] = new_warnings
-            await ctx.send(f"⚠️ | Warning ID {warning_id} has been removed from {member.mention}.")
-            await self.log_action(ctx.guild, f"Warning ID {warning_id} was removed from {member}.")
+            if any(w[0] == warning_id for w in warnings):
+                self.member_actions[member.id] = [w for w in warnings if w[0] != warning_id]
+                await ctx.send(f"⚠️ | Warning ID {warning_id} has been removed from {member.mention}.")
+                await self.log_action(ctx.guild, f"Warning ID {warning_id} was removed from {member}.")
+            else:
+                await ctx.send(f"❌ | Warning ID {warning_id} not found for {member.mention}.")
         else:
             await ctx.send(f"❌ | {member.mention} does not have any warnings.")
+
+    @commands.command()
+    @checks.has_permissions(PermissionLevel.MODERATOR)
+    async def untimeout(self, ctx: commands.Context, member: discord.Member):
+        """
+        Remove the timeout from a member.
+        """
+        if member == ctx.author:
+            return await ctx.send("❌ | You cannot take action on yourself.")
+
+        if not self.has_higher_role(ctx, member):
+            return await self.send_permission_error(ctx)
+
+        await member.edit(timed_out_until=None)  # Remove timeout
+        await ctx.send(f"✅ | Timeout has been removed for {member.mention}.")
+
+        # Log the untimeout action
+        await self.log_action(ctx.guild, f"Timeout removed from {member}.")
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
