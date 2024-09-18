@@ -129,7 +129,7 @@ class Moderation(commands.Cog):
         await ctx.send(f"👢 | {member.mention} has been kicked.")
         await self.log_action(ctx.guild, f"{member} was kicked for: {reason}")
 
-      @commands.command()
+    @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
     async def timeout(self, ctx: commands.Context, member: discord.Member, duration: int, *, reason: str = None):
         """
