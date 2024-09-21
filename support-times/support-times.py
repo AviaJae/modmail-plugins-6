@@ -421,17 +421,17 @@ class SupportTimes(commands.Cog):
         if self.bot.config["dm_disabled"] != close_mode:
             self.bot.config["dm_disabled"] = close_mode
             await self.bot.config.update()
-            logger.info("ModMail tickets have been automatically disabled following operating hours. ")
+            logger.info("Modmail has been automatically disabled.")
             if self.bot.config["log_channel_id"] is not None:
                 log_channel = self.bot.get_channel(int(self.bot.config["log_channel_id"]))
                 if log_channel:
                     embed = discord.Embed(
-                        title="Modmail is now disabled!",
-                        description=f"Modmail has been automatically disabled.",
+                        title="ModMail tickets are now disabled!",
+                        description=f"ModMail tickets have been automatically disabled following operating hours.",
                         timestamp=discord.utils.utcnow(),
-                        color=self.bot.error_color,
+                        color=self.bot.main_colorr,
                     )
-                    embed.set_footer(text="Support-Times Plugin")
+                    embed.set_footer(text="AirAsia Group RBLX")
                     await log_channel.send(embed=embed)
 
 
