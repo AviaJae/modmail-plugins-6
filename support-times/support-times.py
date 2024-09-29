@@ -429,7 +429,7 @@ class SupportTimes(commands.Cog):
                         title="ModMail tickets are now disabled!",
                         description=f"ModMail tickets have been automatically disabled following operating hours.",
                         timestamp=discord.utils.utcnow(),
-                        color=self.bot.main_colorr,
+                        color=self.bot.main_color,
                     )
                     embed.set_footer(text="AirAsia Group RBLX")
                     await log_channel.send(embed=embed)
