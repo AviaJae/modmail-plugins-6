@@ -24,15 +24,11 @@ class Tags(commands.Cog):
             else:
                 await ctx.send(f"❌ | Tag `{name}` not found.")
         else:
-            # List all available tags
-            if self.tags:
-                tag_list = ", ".join(self.tags.keys())
-                await ctx.send(f"Available tags: {tag_list}")
-            else:
-                await ctx.send("No tags available.")
+            # If no subcommand or name is provided, send the list of subcommands
+            await ctx.send_help(ctx.command)
 
     @tag.command()
-    @checks.has_permissions(PermissionLevel.SUPPORTER)
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     async def add(self, ctx: commands.Context, name: str, *, message: str):
         """
         Add a new tag
@@ -45,7 +41,7 @@ class Tags(commands.Cog):
         await ctx.send(f"✅ | Tag `{name}` added successfully!")
 
     @tag.command()
-    @checks.has_permissions(PermissionLevel.SUPPORTER)
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     async def delete(self, ctx: commands.Context, name: str):
         """
         Delete a tag
