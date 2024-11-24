@@ -99,12 +99,16 @@ class Reminder(commands.Cog):
                 except discord.Forbidden:
                     pass
 
-            creator = self.bot.get_user(reminder["user_id"])
-            if creator:
-                try:
-                    await creator.send(f"⏰ | Reminder for {target.mention} has been sent: {reminder['message']}")
-                except discord.Forbidden:
-                    pass
+            # Notify the creator only if reminding another user
+            if reminder["target_id"] != reminder["user_id"]:
+                creator = self.bot.get_user(reminder["user_id"])
+                if creator:
+                    try:
+                        await creator.send(
+                            f"⏰ | Your reminder for {target.mention} has been sent: {reminder['message']}"
+                        )
+                    except discord.Forbidden:
+                        pass
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Reminder(bot))
