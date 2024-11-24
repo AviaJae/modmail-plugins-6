@@ -12,19 +12,23 @@ class DirectMessages(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
-    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def dm(self, ctx: commands.Context):
         """
-        Send a DM to a user
+        Send a DM to a user.
         """
         await ctx.send_help(ctx.command)
 
     @dm.command()
-    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def send(self, ctx: commands.Context, user: discord.User, *, message: str):
         """
         Send a direct message to a user.
         """
+        if user == ctx.author:
+            await ctx.send("❌ | You cannot send a DM to yourself.")
+            return
+
         try:
             sent_message = await user.send(message)
             # Store the DM ID
@@ -36,10 +40,10 @@ class DirectMessages(commands.Cog):
             await ctx.send(f"❌ | An error occurred while trying to send the message to {user.mention}.")
 
     @dm.command()
-    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def delete(self, ctx: commands.Context, user: discord.User):
         """
-        Delete the most recent DM sent to a user by the bot
+        Delete the most recent DM sent to a user by the bot.
         """
         try:
             message_id = self.sent_dms.get(user.id)
