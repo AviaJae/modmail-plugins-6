@@ -28,6 +28,22 @@ class Tags(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @tag.command()
+    async def list(self, ctx: commands.Context):
+        """
+        List all available tags
+        """
+        if self.tags:
+            tag_list = "\n".join(f"- `{tag}`" for tag in self.tags.keys())
+            embed = discord.Embed(
+                title="Available Tags",
+                description=tag_list,
+                color=discord.Color.blue()
+            )
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send("❌ | No tags available.")
+
+    @tag.command()
     @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     async def add(self, ctx: commands.Context, name: str, *, message: str):
         """
