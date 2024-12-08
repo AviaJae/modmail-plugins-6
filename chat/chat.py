@@ -1,9 +1,14 @@
 import discord
 from discord.ext import commands
 import openai
+from dotenv import load_dotenv
+import os
 
-# Add your OpenAI API key here
-openai.api_key = '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'
+# Load the environment variables from the .env file
+load_dotenv()
+
+# Read the OpenAI API key from the environment variables
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 class ChatGPT(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -22,7 +27,7 @@ class ChatGPT(commands.Cog):
         # Make the OpenAI API call for ChatGPT
         try:
             # Request to OpenAI's ChatGPT model
-            response = openai.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",  # Change model to gpt-4 for GPT-4
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
