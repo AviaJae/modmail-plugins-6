@@ -25,15 +25,16 @@ class ChatGPT(commands.Cog):
 
         # Send the request to OpenAI's API
         try:
-            response = openai.Completion.create(
+            # Use the newer chat API interface
+            response = openai.chat_completions.create(
                 model="gpt-3.5-turbo",  # Use GPT-3.5 model
-                prompt=message.content,
+                messages=[{"role": "user", "content": message.content}],
                 max_tokens=150,  # Limit the number of tokens to control the response length
                 temperature=0.7  # Adjust for response creativity (0.0 - 1.0)
             )
 
             # Get the response text
-            answer = response.choices[0].text.strip()
+            answer = response['choices'][0]['message']['content'].strip()
 
             # Handle long responses that exceed Discord's 2000 character limit
             if len(answer) > 2000:
