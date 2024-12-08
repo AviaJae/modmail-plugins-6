@@ -3,7 +3,7 @@ from discord.ext import commands
 import openai
 
 # Add your OpenAI API key here
-openai.api_key = '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'
+openai.api_key = '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'
 
 class ChatGPT(commands.Cog):
     def __init__(self, bot: commands.Bot):
