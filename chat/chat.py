@@ -27,7 +27,7 @@ class ChatGPT(commands.Cog):
         # Make the OpenAI API call for ChatGPT
         try:
             # Request to OpenAI's ChatGPT model
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",  # Change model to gpt-4 for GPT-4
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
