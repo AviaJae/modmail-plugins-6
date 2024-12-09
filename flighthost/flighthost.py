@@ -1,3 +1,17 @@
+import discord
+from discord.ext import commands
+import uuid
+import time
+import re
+from core.models import PermissionLevel  # Import PermissionLevel for moderator checks
+from core.checks import has_permissions  # Import the permission check decorator
+
+
+class FlightHosting(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.flights = {}  # Store flights in the format {flight_id: flight_data}
+
 @commands.command()
 @has_permissions(PermissionLevel.MODERATOR)
 async def createflight(
