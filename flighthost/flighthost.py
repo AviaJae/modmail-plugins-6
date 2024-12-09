@@ -64,14 +64,20 @@ class FlightHosting(commands.Cog):
         flight_id = str(uuid.uuid4().int)[:19]
 
         # Validate and process the timestamp
-        timestamp_pattern = r"<t:(\d+):?[RFtTdD]?>"  # Matches Discord timestamp formats
-        if re.match(timestamp_pattern, timestamp):  # Timestamp in Discord format
+        timestamp_pattern = r"<t:(\d+):?([RFtTdD]?)>"  # Matches Discord timestamp formats (including optional style)
+        epoch_time = None
+        
+        # Check if the timestamp is in Discord format (<t:epoch:style>)
+        if re.match(timestamp_pattern, timestamp):  # Discord timestamp format
             epoch_time = int(re.match(timestamp_pattern, timestamp).group(1))
+            timestamp_style = re.match(timestamp_pattern, timestamp).group(2)  # Optional style part
+            if not timestamp_style:
+                timestamp = f"<t:{epoch_time}:F>"  # Default to full date format if style not provided
         elif timestamp.isdigit():  # Raw epoch time
             epoch_time = int(timestamp)
             timestamp = f"<t:{epoch_time}:F>"  # Convert to Discord timestamp format
         else:
-            await ctx.send("❌ Invalid timestamp format. Provide a valid Discord timestamp (e.g., `<t:1702204800:F>`) or epoch time.")
+            await ctx.send("❌ Invalid timestamp format. Provide a valid Discord timestamp (e.g., `<t:1702204800:F>`) or raw epoch time.")
             return
 
         # Check if the timestamp is in the future
