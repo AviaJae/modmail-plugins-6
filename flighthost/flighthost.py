@@ -4,6 +4,11 @@ import uuid
 import time
 import re
 
+from core import checks
+from core.models import PermissionLevel, DMDisabled, getLogger
+from core.time import UserFriendlyTime
+from core.paginator import EmbedPaginatorSession, MessagePaginatorSession
+
 class FlightHosting(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
