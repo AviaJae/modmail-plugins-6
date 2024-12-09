@@ -18,7 +18,7 @@ class FlightHosting(commands.Cog):
         return commands.check(predicate)
 
     @commands.command()
-    @has_permissions(PermissionLevel.MODERATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def createflight(
         self,
         ctx,
@@ -109,7 +109,7 @@ class FlightHosting(commands.Cog):
         await ctx.author.send(f"✈️ Flight ID for `{flight_number}`: `{flight_id}`.")
 
     @commands.command()
-    @has_permissions(PermissionLevel.MODERATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def flightlist(self, ctx):
         """
         List all created flights.
@@ -130,7 +130,7 @@ class FlightHosting(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @has_permissions(PermissionLevel.MODERATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def deleteflight(self, ctx, flight_id: str):
         """
         Delete a flight using its flight ID.
@@ -143,7 +143,7 @@ class FlightHosting(commands.Cog):
         await ctx.send(f"✅ Flight with ID `{flight_id}` has been deleted.")
 
     @commands.command()
-    @has_permissions(PermissionLevel.MODERATOR)
+    @checks.has_permissions(PermissionLevel.MODERATOR)
     async def editflight(self, ctx, flight_id: str, field: str, *, new_value: str):
         """
         Edit an existing flight.
