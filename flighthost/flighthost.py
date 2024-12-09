@@ -1,7 +1,8 @@
 import discord
 from discord.ext import commands
 import uuid
-import re  # For URL and timestamp validation
+import re  # For timestamp validation
+import time  # For epoch conversion
 
 class FlightHosting(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -9,7 +10,7 @@ class FlightHosting(commands.Cog):
         self.flights = {}  # Store flights in the format {flight_id: flight_data}
 
     @commands.command()
-    async def createflight(self, ctx, channel: discord.TextChannel, flight_number: str, aircraft: str, departure: str, destination: str, departure_time: str, event_link: str):
+    async def createflight(self, ctx, channel: discord.TextChannel, flight_number: str, aircraft: str, departure: str, destination: str, event_link: str, timestamp: str):
         """
         Create a flight schedule.
         Parameters:
@@ -18,22 +19,27 @@ class FlightHosting(commands.Cog):
         - aircraft: The aircraft model (e.g., B737-800).
         - departure: Departure location.
         - destination: Destination location.
-        - departure_time: Scheduled departure time in Discord timestamp format (e.g., <t:1738963200:R>).
-        - event_link: The URL to the event details.
+        - event_link: Event link associated with the flight.
+        - timestamp: Discord timestamp in <t:epoch:style> format or epoch seconds.
         """
-        # Validate the Discord timestamp
-        discord_timestamp_regex = r"^<t:\d+(:[a-zA-Z])?>$"
-        if not re.match(discord_timestamp_regex, departure_time):
-            await ctx.send("❌ Invalid departure time. Please use a valid Discord timestamp (e.g., `<t:1738963200:R>`).")
-            return
-
-        # Validate the event link
-        url_regex = r"^(http|https)://[^\s]+$"
-        if not re.match(url_regex, event_link):
-            await ctx.send("❌ Invalid event link. Please provide a valid URL.")
-            return
-
         flight_id = str(uuid.uuid4().int)[:19]  # Generate a unique 19-digit ID
+
+        # Validate and process timestamp
+        timestamp_pattern = r"<t:(\d+):?[RFtTdD]?>"  # Matches Discord timestamp formats
+        if re.match(timestamp_pattern, timestamp):  # Timestamp in Discord format
+            epoch_time = int(re.match(timestamp_pattern, timestamp).group(1))
+        elif timestamp.isdigit():  # Raw epoch time
+            epoch_time = int(timestamp)
+            timestamp = f"<t:{epoch_time}:F>"  # Convert to Discord timestamp format
+        else:
+            await ctx.send("❌ Invalid timestamp format. Provide a valid Discord timestamp (e.g., `<t:1702204800:F>`) or epoch time.")
+            return
+
+        # Check if epoch time is valid
+        current_time = int(time.time())
+        if epoch_time < current_time:
+            await ctx.send("❌ Timestamp must be in the future.")
+            return
 
         # Save flight details
         flight_data = {
@@ -41,8 +47,8 @@ class FlightHosting(commands.Cog):
             "aircraft": aircraft,
             "departure": departure,
             "destination": destination,
-            "departure_time": departure_time,
             "event_link": event_link,
+            "departure_time": timestamp,
             "channel_id": channel.id,
         }
 
@@ -54,8 +60,8 @@ class FlightHosting(commands.Cog):
         embed.add_field(name="\u2708 Flight Number", value=f"**{flight_number}** ({flight_id})", inline=False)
         embed.add_field(name="Location", value=f"{departure} \u2794 {destination}", inline=False)
         embed.add_field(name="Aircraft", value=aircraft, inline=False)
-        embed.add_field(name="Departure Time", value=departure_time, inline=False)
-        embed.add_field(name="Event Link", value=f"[Event Details]({event_link})", inline=False)
+        embed.add_field(name="Departure Time", value=f"{timestamp} (parsed)", inline=False)  # Show both formats
+        embed.add_field(name="Event Link", value=event_link, inline=False)
 
         # Send the embed to the specified channel
         await channel.send(embed=embed)
