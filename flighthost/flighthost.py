@@ -55,7 +55,7 @@ class FlightHosting(commands.Cog):
         self.flights[flight_id] = flight_data
 
         # Create the embed for the flight schedule
-        embed = discord.Embed(title="\u2699\ufe0f Flight Schedule", description="AirAsia Group RBLX | Scheduled Flight", color=discord.Color.bright_red())
+        embed = discord.Embed(title="\u2699\ufe0f Flight Schedule", description="AirAsia Group RBLX | Scheduled Flight", color=discord.Color.red())
         embed.set_footer(text="Now Everyone Can Fly")
         embed.add_field(name="\u2708 Flight Number", value=f"**{flight_number}** ({flight_id})", inline=False)
         embed.add_field(name="Location", value=f"{departure} \u2794 {destination}", inline=False)
