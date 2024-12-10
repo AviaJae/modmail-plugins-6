@@ -4,6 +4,7 @@ import uuid
 import time
 import pytz
 import parsedatetime
+import re
 
 from core import checks
 from core.models import PermissionLevel
