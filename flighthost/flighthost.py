@@ -20,10 +20,11 @@ class FlightHosting(commands.Cog):
     @staticmethod
     def parse_location(location: str) -> str:
         """
-        Extracts text within parentheses. E.g., '(Penang)' -> 'Penang'
+        Extracts text within parentheses, ensuring compatibility with spaces.
+        E.g., "(Penang)" or "(Kuantan Airport)" -> "Penang" or "Kuantan Airport".
         """
-        match = re.match(r"\((.*?)\)", location)
-        return match.group(1) if match else None
+        match = re.search(r"\((.+?)\)", location)
+        return match.group(1).strip() if match else None
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
@@ -116,8 +117,8 @@ class FlightHosting(commands.Cog):
         embed.add_field(name="Aircraft", value=aircraft, inline=False)
         embed.add_field(name="Departure", value=departure, inline=True)
         embed.add_field(name="Destination", value=destination, inline=True)
+        embed.add_field(name="Departure Time", value=f"{timestamp} *(converted to your timezone)*", inline=False)
         embed.add_field(name="Event Link", value=event_link, inline=False)
-        embed.add_field(name="Time", value=timestamp, inline=False)
 
         await channel.send(embed=embed)
         await ctx.send(f"✅ Flight created successfully with ID: `{flight_id}`")
