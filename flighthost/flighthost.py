@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import uuid
 import time
-import re
 import pytz
 import parsedatetime
 
@@ -23,7 +22,6 @@ class FlightHosting(commands.Cog):
         Extracts text within parentheses for locations (handles spaces in locations).
         E.g., "(Kuantan Airport)" or "(Kuala Lumpur International Airport 2)" -> "Kuantan Airport" or "Kuala Lumpur International Airport 2".
         """
-        # This regex allows multiple words and spaces inside parentheses
         match = re.match(r"\((.*?)\)", location)
         if match:
             return match.group(1).strip()
@@ -43,46 +41,64 @@ class FlightHosting(commands.Cog):
         except Exception:
             return None
 
+    async def prompt_user(self, ctx, prompt: str, timeout: int = 30) -> str:
+        """
+        Prompt the user for input and wait for their response.
+        """
+        await ctx.send(prompt)
+        try:
+            response = await self.bot.wait_for(
+                "message", check=lambda m: m.author == ctx.author, timeout=timeout
+            )
+            return response.content.strip()
+        except asyncio.TimeoutError:
+            await ctx.send(f"❌ You took too long to respond!")
+            return None
+
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def createflight(
-        self,
-        ctx,
-        channel: discord.TextChannel,
-        flight_number: str = None,
-        aircraft: str = None,
-        departure: str = None,
-        destination: str = None,
-        event_link: str = None,
-        timestamp: str = None,
-    ):
+    async def createflight(self, ctx):
         """
-        Create a flight schedule.
+        Step-by-step flight creation process.
         """
-        if not all([flight_number, aircraft, departure, destination, event_link, timestamp]):
-            await ctx.send("❌ All parameters are required: `channel`, `flight_number`, `aircraft`, `departure`, `destination`, `event_link`, and `timestamp`.")
+        # Step 1: Ask for flight number
+        flight_number = await self.prompt_user(ctx, "What is the flight number?")
+        if not flight_number:
             return
 
-        # Parse departure and destination (handles multiple words inside parentheses)
+        # Step 2: Ask for aircraft type
+        aircraft = await self.prompt_user(ctx, "What is the aircraft type?")
+        if not aircraft:
+            return
+
+        # Step 3: Ask for departure location
+        departure = await self.prompt_user(ctx, "Where is the departure location? (e.g., (Kuantan Airport))")
+        if not departure or self.parse_location(departure) is None:
+            await ctx.send("❌ Invalid departure format. Ensure it is inside parentheses, e.g., (Kuantan Airport).")
+            return
         departure = self.parse_location(departure)
+
+        # Step 4: Ask for destination location
+        destination = await self.prompt_user(ctx, "Where is the destination location? (e.g., (Kuala Lumpur International Airport 2))")
+        if not destination or self.parse_location(destination) is None:
+            await ctx.send("❌ Invalid destination format. Ensure it is inside parentheses, e.g., (Kuala Lumpur International Airport 2).")
+            return
         destination = self.parse_location(destination)
-        if departure is None or destination is None:
-            await ctx.send(
-                "❌ Invalid format for `departure` or `destination`. Both must be enclosed in parentheses, e.g., `(Kuantan Airport)` or `(Kuala Lumpur International Airport 2)`."
-            )
+
+        # Step 5: Ask for event link
+        event_link = await self.prompt_user(ctx, "What is the event link?")
+        if not event_link:
             return
 
-        # Parse the timestamp
+        # Step 6: Ask for departure time
+        timestamp = await self.prompt_user(ctx, "What is the departure time? (e.g., (Monday, December 9, 2024 11:45 PM))")
+        if not timestamp or self.parse_location(timestamp) is None:
+            await ctx.send("❌ Invalid timestamp format. Ensure it is inside parentheses, e.g., (Monday, December 9, 2024 11:45 PM).")
+            return
         timestamp = self.parse_location(timestamp)
-        if timestamp is None:
-            await ctx.send(
-                "❌ Invalid timestamp format. Enclose the timestamp in parentheses, e.g., `(Monday, December 9, 2024 11:45 PM)`."
-            )
-            return
-
         discord_timestamp = self.parse_time(timestamp)
         if discord_timestamp is None:
-            await ctx.send("❌ Invalid timestamp. Please provide a valid date enclosed in parentheses.")
+            await ctx.send("❌ Invalid timestamp. Please provide a valid date.")
             return
 
         # Ensure timestamp is in the future
@@ -103,7 +119,7 @@ class FlightHosting(commands.Cog):
             "destination": destination,
             "event_link": event_link,
             "departure_time": discord_timestamp,
-            "channel_id": channel.id,
+            "channel_id": ctx.channel.id,
         }
         self.flights[flight_id] = flight_data
 
@@ -120,7 +136,7 @@ class FlightHosting(commands.Cog):
         embed.add_field(name="Departure Time", value=f"{discord_timestamp} *(converted to your timezone)*", inline=False)
         embed.add_field(name="Event Link", value=event_link, inline=False)
 
-        await channel.send(embed=embed)
+        await ctx.send(embed=embed)
         await ctx.send(f"✅ Flight created successfully with ID: `{flight_id}`")
 
     @commands.command()
