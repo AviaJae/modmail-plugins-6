@@ -20,11 +20,25 @@ class FlightHosting(commands.Cog):
     @staticmethod
     def parse_location(location: str) -> str:
         """
-        Extracts text within parentheses, ensuring compatibility with spaces.
+        Extracts text within parentheses for locations.
         E.g., "(Penang)" or "(Kuantan Airport)" -> "Penang" or "Kuantan Airport".
         """
         match = re.search(r"\((.+?)\)", location)
         return match.group(1).strip() if match else None
+
+    def parse_time(self, time_string: str) -> str:
+        """
+        Parses the timestamp provided in brackets into a Discord-compatible timestamp.
+        Converts natural language time into epoch time if needed.
+        """
+        try:
+            time_struct, _ = self.cal.parse(time_string)
+            naive_time = time.mktime(time_struct)
+            local_time = self.timezone.localize(time.localtime(naive_time))
+            epoch_time = int(local_time.timestamp())
+            return f"<t:{epoch_time}:F>"
+        except Exception:
+            return None
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
@@ -55,39 +69,22 @@ class FlightHosting(commands.Cog):
             )
             return
 
-        # Parse the timestamp to handle parentheses
+        # Parse the timestamp
         timestamp = self.parse_location(timestamp)
         if timestamp is None:
             await ctx.send(
-                "❌ Invalid timestamp format. Enclose the timestamp in parentheses, e.g., `(Monday, December 9, 2024 11:45 PM)` or use a valid Discord timestamp like `<t:1702204800:F>`."
+                "❌ Invalid timestamp format. Enclose the timestamp in parentheses, e.g., `(Monday, December 9, 2024 11:45 PM)`."
             )
             return
 
-        epoch_time = None
-        timestamp_pattern = r"<t:(\d+):?([RFtTdD]?)>"
+        discord_timestamp = self.parse_time(timestamp)
+        if discord_timestamp is None:
+            await ctx.send("❌ Invalid timestamp. Please provide a valid date enclosed in parentheses.")
+            return
 
-        if re.match(timestamp_pattern, timestamp):
-            epoch_time = int(re.match(timestamp_pattern, timestamp).group(1))
-            timestamp_style = re.match(timestamp_pattern, timestamp).group(2)
-            if not timestamp_style:
-                timestamp = f"<t:{epoch_time}:F>"
-        elif timestamp.isdigit():
-            epoch_time = int(timestamp)
-            timestamp = f"<t:{epoch_time}:F>"
-        else:
-            try:
-                time_struct, _ = self.cal.parse(timestamp)
-                naive_time = time.mktime(time_struct)
-                local_time = self.timezone.localize(time.localtime(naive_time))
-                epoch_time = int(local_time.timestamp())
-                timestamp = f"<t:{epoch_time}:F>"
-            except Exception:
-                await ctx.send(
-                    "❌ Invalid timestamp format. Provide a valid natural language date enclosed in parentheses (e.g., `(Monday, December 9, 2024 11:45 PM)`), a Discord timestamp (`<t:1702204800:F>`), or raw epoch time."
-                )
-                return
-
+        # Ensure timestamp is in the future
         current_time = int(time.time())
+        epoch_time = int(re.search(r"<t:(\d+):F>", discord_timestamp).group(1))
         if epoch_time < current_time:
             await ctx.send("❌ Timestamp must be in the future.")
             return
@@ -102,7 +99,7 @@ class FlightHosting(commands.Cog):
             "departure": departure,
             "destination": destination,
             "event_link": event_link,
-            "departure_time": timestamp,
+            "departure_time": discord_timestamp,
             "channel_id": channel.id,
         }
         self.flights[flight_id] = flight_data
@@ -117,7 +114,7 @@ class FlightHosting(commands.Cog):
         embed.add_field(name="Aircraft", value=aircraft, inline=False)
         embed.add_field(name="Departure", value=departure, inline=True)
         embed.add_field(name="Destination", value=destination, inline=True)
-        embed.add_field(name="Departure Time", value=f"{timestamp} *(converted to your timezone)*", inline=False)
+        embed.add_field(name="Departure Time", value=f"{discord_timestamp} *(converted to your timezone)*", inline=False)
         embed.add_field(name="Event Link", value=event_link, inline=False)
 
         await channel.send(embed=embed)
