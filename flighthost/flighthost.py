@@ -21,9 +21,10 @@ class FlightHosting(commands.Cog):
     def parse_location(location: str) -> str:
         """
         Extracts text within parentheses for locations (handles spaces in locations).
-        E.g., "(Penang)" or "(Kuantan Airport)" -> "Penang" or "Kuantan Airport".
+        E.g., "(Kuantan Airport)" or "(Kuala Lumpur International Airport 2)" -> "Kuantan Airport" or "Kuala Lumpur International Airport 2".
         """
-        match = re.search(r"\((.*?)\)", location)  # Update to handle multiple words inside parentheses
+        # This regex allows multiple words and spaces inside parentheses
+        match = re.search(r"\((.*?)\)", location)
         return match.group(1).strip() if match else None
 
     def parse_time(self, time_string: str) -> str:
@@ -65,7 +66,7 @@ class FlightHosting(commands.Cog):
         destination = self.parse_location(destination)
         if departure is None or destination is None:
             await ctx.send(
-                "❌ Invalid format for `departure` or `destination`. Both must be enclosed in parentheses, e.g., `(Penang)` or `(Kuantan Airport)`."
+                "❌ Invalid format for `departure` or `destination`. Both must be enclosed in parentheses, e.g., `(Kuantan Airport)` or `(Kuala Lumpur International Airport 2)`."
             )
             return
 
