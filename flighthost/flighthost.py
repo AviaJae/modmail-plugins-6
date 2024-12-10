@@ -24,8 +24,10 @@ class FlightHosting(commands.Cog):
         E.g., "(Kuantan Airport)" or "(Kuala Lumpur International Airport 2)" -> "Kuantan Airport" or "Kuala Lumpur International Airport 2".
         """
         # This regex allows multiple words and spaces inside parentheses
-        match = re.search(r"\((.*?)\)", location)
-        return match.group(1).strip() if match else None
+        match = re.match(r"\((.*?)\)", location)
+        if match:
+            return match.group(1).strip()
+        return None
 
     def parse_time(self, time_string: str) -> str:
         """
