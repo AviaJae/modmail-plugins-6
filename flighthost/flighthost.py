@@ -4,7 +4,7 @@ import uuid
 import time
 import pytz
 import parsedatetime
-import re
+import re  # Make sure to import re
 
 from core import checks
 from core.models import PermissionLevel
@@ -20,91 +20,79 @@ class FlightHosting(commands.Cog):
     @staticmethod
     def parse_location(location: str) -> str:
         """
-        Extracts text within parentheses for locations (handles spaces in locations).
-        E.g., "(Kuantan Airport)" or "(Kuala Lumpur International Airport 2)" -> "Kuantan Airport" or "Kuala Lumpur International Airport 2".
+        This function now returns the location directly without requiring parentheses.
         """
-        match = re.match(r"\((.*?)\)", location)
-        if match:
-            return match.group(1).strip()
-        return None
-
-    def parse_time(self, time_string: str) -> str:
-        """
-        Parses the timestamp provided in brackets into a Discord-compatible timestamp.
-        Converts natural language time into epoch time if needed.
-        """
-        try:
-            time_struct, _ = self.cal.parse(time_string)
-            naive_time = time.mktime(time_struct)
-            local_time = self.timezone.localize(time.localtime(naive_time))
-            epoch_time = int(local_time.timestamp())
-            return f"<t:{epoch_time}:F>"
-        except Exception:
-            return None
-
-    async def prompt_user(self, ctx, prompt: str, timeout: int = 30) -> str:
-        """
-        Prompt the user for input and wait for their response.
-        """
-        await ctx.send(prompt)
-        try:
-            response = await self.bot.wait_for(
-                "message", check=lambda m: m.author == ctx.author, timeout=timeout
-            )
-            return response.content.strip()
-        except asyncio.TimeoutError:
-            await ctx.send(f"❌ You took too long to respond!")
-            return None
+        return location.strip() if location else None
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def createflight(self, ctx):
+    async def createflight(
+        self,
+        ctx,
+        channel: discord.TextChannel,
+    ):
         """
-        Step-by-step flight creation process.
+        Step-by-step creation of a flight schedule.
         """
         # Step 1: Ask for flight number
-        flight_number = await self.prompt_user(ctx, "What is the flight number?")
-        if not flight_number:
-            return
+        await ctx.send("What is the flight number?")
+        flight_number = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
 
-        # Step 2: Ask for aircraft type
-        aircraft = await self.prompt_user(ctx, "What is the aircraft type?")
-        if not aircraft:
-            return
+        # Step 2: Ask for aircraft
+        await ctx.send("What is the aircraft?")
+        aircraft = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
 
-        # Step 3: Ask for departure location
-        departure = await self.prompt_user(ctx, "Where is the departure location? (e.g., (Kuantan Airport))")
-        if not departure or self.parse_location(departure) is None:
-            await ctx.send("❌ Invalid departure format. Ensure it is inside parentheses, e.g., (Kuantan Airport).")
-            return
-        departure = self.parse_location(departure)
+        # Step 3: Ask for departure
+        await ctx.send("Where is the departure location?")
+        departure = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
 
-        # Step 4: Ask for destination location
-        destination = await self.prompt_user(ctx, "Where is the destination location? (e.g., (Kuala Lumpur International Airport 2))")
-        if not destination or self.parse_location(destination) is None:
-            await ctx.send("❌ Invalid destination format. Ensure it is inside parentheses, e.g., (Kuala Lumpur International Airport 2).")
-            return
-        destination = self.parse_location(destination)
+        # Step 4: Ask for destination
+        await ctx.send("Where is the destination location?")
+        destination = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
 
         # Step 5: Ask for event link
-        event_link = await self.prompt_user(ctx, "What is the event link?")
-        if not event_link:
+        await ctx.send("Please provide the event link.")
+        event_link = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+
+        # Step 6: Ask for timestamp
+        await ctx.send("Please provide the timestamp for the flight.")
+        timestamp = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+
+        # Parse the departure, destination, and timestamp directly without parentheses
+        departure = self.parse_location(departure.content)
+        destination = self.parse_location(destination.content)
+
+        # Check if the inputs are valid
+        if not departure or not destination or not timestamp:
+            await ctx.send("❌ All fields are required.")
             return
 
-        # Step 6: Ask for departure time
-        timestamp = await self.prompt_user(ctx, "What is the departure time? (e.g., (Monday, December 9, 2024 11:45 PM))")
-        if not timestamp or self.parse_location(timestamp) is None:
-            await ctx.send("❌ Invalid timestamp format. Ensure it is inside parentheses, e.g., (Monday, December 9, 2024 11:45 PM).")
-            return
-        timestamp = self.parse_location(timestamp)
-        discord_timestamp = self.parse_time(timestamp)
-        if discord_timestamp is None:
-            await ctx.send("❌ Invalid timestamp. Please provide a valid date.")
-            return
+        # Parse the timestamp to handle different formats
+        epoch_time = None
+        timestamp_pattern = r"<t:(\d+):?([RFtDd]?)>"
 
-        # Ensure timestamp is in the future
+        if re.match(timestamp_pattern, timestamp.content):  # Discord timestamp format
+            epoch_time = int(re.match(timestamp_pattern, timestamp.content).group(1))
+            timestamp_style = re.match(timestamp_pattern, timestamp.content).group(2)
+            if not timestamp_style:
+                timestamp = f"<t:{epoch_time}:F>"
+        elif timestamp.content.isdigit():  # If it's a direct epoch time
+            epoch_time = int(timestamp.content)
+            timestamp = f"<t:{epoch_time}:F>"
+        else:  # Natural language timestamp
+            try:
+                time_struct, _ = self.cal.parse(timestamp.content)
+                naive_time = time.mktime(time_struct)
+                local_time = self.timezone.localize(time.localtime(naive_time))
+                epoch_time = int(local_time.timestamp())
+                timestamp = f"<t:{epoch_time}:F>"
+            except Exception:
+                await ctx.send(
+                    "❌ Invalid timestamp format. Please provide a valid natural language date or a Discord timestamp."
+                )
+                return
+
         current_time = int(time.time())
-        epoch_time = int(re.search(r"<t:(\d+):F>", discord_timestamp).group(1))
         if epoch_time < current_time:
             await ctx.send("❌ Timestamp must be in the future.")
             return
@@ -114,13 +102,13 @@ class FlightHosting(commands.Cog):
 
         # Save flight data
         flight_data = {
-            "flight_number": flight_number,
-            "aircraft": aircraft,
+            "flight_number": flight_number.content,
+            "aircraft": aircraft.content,
             "departure": departure,
             "destination": destination,
-            "event_link": event_link,
-            "departure_time": discord_timestamp,
-            "channel_id": ctx.channel.id,
+            "event_link": event_link.content,
+            "departure_time": timestamp,
+            "channel_id": channel.id,
         }
         self.flights[flight_id] = flight_data
 
@@ -130,14 +118,14 @@ class FlightHosting(commands.Cog):
             description="Details of the flight are shown below.",
             color=discord.Color.from_rgb(255, 0, 0),
         )
-        embed.add_field(name="Flight Number", value=flight_number, inline=False)
-        embed.add_field(name="Aircraft", value=aircraft, inline=False)
+        embed.add_field(name="Flight Number", value=flight_number.content, inline=False)
+        embed.add_field(name="Aircraft", value=aircraft.content, inline=False)
         embed.add_field(name="Departure", value=departure, inline=True)
         embed.add_field(name="Destination", value=destination, inline=True)
-        embed.add_field(name="Departure Time", value=f"{discord_timestamp} *(converted to your timezone)*", inline=False)
-        embed.add_field(name="Event Link", value=event_link, inline=False)
+        embed.add_field(name="Departure Time", value=f"{timestamp} *(converted to your timezone)*", inline=False)
+        embed.add_field(name="Event Link", value=event_link.content, inline=False)
 
-        await ctx.send(embed=embed)
+        await channel.send(embed=embed)
         await ctx.send(f"✅ Flight created successfully with ID: `{flight_id}`")
 
     @commands.command()
@@ -159,13 +147,11 @@ class FlightHosting(commands.Cog):
         for flight_id, data in self.flights.items():
             embed.add_field(
                 name=f"{data['flight_number']} ({flight_id})",
-                value=(
-                    f"**Aircraft:** {data['aircraft']}\n"
-                    f"**Departure:** {data['departure']}\n"
-                    f"**Destination:** {data['destination']}\n"
-                    f"**Time:** {data['departure_time']}\n"
-                    f"**Channel:** <#{data['channel_id']}>"
-                ),
+                value=(f"**Aircraft:** {data['aircraft']}\n"
+                       f"**Departure:** {data['departure']}\n"
+                       f"**Destination:** {data['destination']}\n"
+                       f"**Time:** {data['departure_time']}\n"
+                       f"**Channel:** <#{data['channel_id']}>"),
                 inline=False,
             )
 
