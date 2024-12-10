@@ -4,7 +4,7 @@ import uuid
 import time
 import pytz
 import parsedatetime
-import re  # Make sure to import re
+import re
 
 from core import checks
 from core.models import PermissionLevel
@@ -24,6 +24,19 @@ class FlightHosting(commands.Cog):
         """
         return location.strip() if location else None
 
+    async def prompt_for_input(self, ctx, question: str, timeout: int = 30) -> str:
+        """
+        Prompt the user for input and return their response. 
+        The function will timeout after a specified time.
+        """
+        await ctx.send(question)
+        try:
+            response = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author, timeout=timeout)
+            return response.content
+        except asyncio.TimeoutError:
+            await ctx.send("❌ Time's up! Please try again.")
+            return None
+
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
     async def createflight(
@@ -32,37 +45,41 @@ class FlightHosting(commands.Cog):
         channel: discord.TextChannel,
     ):
         """
-        Step-by-step creation of a flight schedule.
+        Step-by-step creation of a flight schedule with restart option and timeout.
         """
         # Step 1: Ask for flight number
-        await ctx.send("What is the flight number?")
-        flight_number = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+        flight_number = await self.prompt_for_input(ctx, "What is the flight number? (You have 30 seconds to respond.)")
+        if flight_number is None:
+            return
 
         # Step 2: Ask for aircraft
-        await ctx.send("What is the aircraft?")
-        aircraft = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+        aircraft = await self.prompt_for_input(ctx, "What is the aircraft? (You have 30 seconds to respond.)")
+        if aircraft is None:
+            return
 
         # Step 3: Ask for departure
-        await ctx.send("Where is the departure location?")
-        departure = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+        departure = await self.prompt_for_input(ctx, "Where is the departure location? (You have 30 seconds to respond.)")
+        if departure is None:
+            return
+        departure = self.parse_location(departure)
 
         # Step 4: Ask for destination
-        await ctx.send("Where is the destination location?")
-        destination = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+        destination = await self.prompt_for_input(ctx, "Where is the destination location? (You have 30 seconds to respond.)")
+        if destination is None:
+            return
+        destination = self.parse_location(destination)
 
         # Step 5: Ask for event link
-        await ctx.send("Please provide the event link.")
-        event_link = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+        event_link = await self.prompt_for_input(ctx, "Please provide the event link. (You have 30 seconds to respond.)")
+        if event_link is None:
+            return
 
         # Step 6: Ask for timestamp
-        await ctx.send("Please provide the timestamp for the flight.")
-        timestamp = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+        timestamp = await self.prompt_for_input(ctx, "Please provide the timestamp for the flight. (You have 30 seconds to respond.)")
+        if timestamp is None:
+            return
 
         # Parse the departure, destination, and timestamp directly without parentheses
-        departure = self.parse_location(departure.content)
-        destination = self.parse_location(destination.content)
-
-        # Check if the inputs are valid
         if not departure or not destination or not timestamp:
             await ctx.send("❌ All fields are required.")
             return
@@ -71,17 +88,17 @@ class FlightHosting(commands.Cog):
         epoch_time = None
         timestamp_pattern = r"<t:(\d+):?([RFtDd]?)>"
 
-        if re.match(timestamp_pattern, timestamp.content):  # Discord timestamp format
-            epoch_time = int(re.match(timestamp_pattern, timestamp.content).group(1))
-            timestamp_style = re.match(timestamp_pattern, timestamp.content).group(2)
+        if re.match(timestamp_pattern, timestamp):  # Discord timestamp format
+            epoch_time = int(re.match(timestamp_pattern, timestamp).group(1))
+            timestamp_style = re.match(timestamp_pattern, timestamp).group(2)
             if not timestamp_style:
                 timestamp = f"<t:{epoch_time}:F>"
-        elif timestamp.content.isdigit():  # If it's a direct epoch time
-            epoch_time = int(timestamp.content)
+        elif timestamp.isdigit():  # If it's a direct epoch time
+            epoch_time = int(timestamp)
             timestamp = f"<t:{epoch_time}:F>"
         else:  # Natural language timestamp
             try:
-                time_struct, _ = self.cal.parse(timestamp.content)
+                time_struct, _ = self.cal.parse(timestamp)
                 naive_time = time.mktime(time_struct)
                 local_time = self.timezone.localize(time.localtime(naive_time))
                 epoch_time = int(local_time.timestamp())
@@ -102,11 +119,11 @@ class FlightHosting(commands.Cog):
 
         # Save flight data
         flight_data = {
-            "flight_number": flight_number.content,
-            "aircraft": aircraft.content,
+            "flight_number": flight_number,
+            "aircraft": aircraft,
             "departure": departure,
             "destination": destination,
-            "event_link": event_link.content,
+            "event_link": event_link,
             "departure_time": timestamp,
             "channel_id": channel.id,
         }
@@ -118,12 +135,12 @@ class FlightHosting(commands.Cog):
             description="Details of the flight are shown below.",
             color=discord.Color.from_rgb(255, 0, 0),
         )
-        embed.add_field(name="Flight Number", value=flight_number.content, inline=False)
-        embed.add_field(name="Aircraft", value=aircraft.content, inline=False)
+        embed.add_field(name="Flight Number", value=flight_number, inline=False)
+        embed.add_field(name="Aircraft", value=aircraft, inline=False)
         embed.add_field(name="Departure", value=departure, inline=True)
         embed.add_field(name="Destination", value=destination, inline=True)
         embed.add_field(name="Departure Time", value=f"{timestamp} *(converted to your timezone)*", inline=False)
-        embed.add_field(name="Event Link", value=event_link.content, inline=False)
+        embed.add_field(name="Event Link", value=event_link, inline=False)
 
         await channel.send(embed=embed)
         await ctx.send(f"✅ Flight created successfully with ID: `{flight_id}`")
