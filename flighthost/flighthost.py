@@ -20,10 +20,10 @@ class FlightHosting(commands.Cog):
     @staticmethod
     def parse_location(location: str) -> str:
         """
-        Extracts text within parentheses for locations.
+        Extracts text within parentheses for locations (handles spaces in locations).
         E.g., "(Penang)" or "(Kuantan Airport)" -> "Penang" or "Kuantan Airport".
         """
-        match = re.search(r"\((.+?)\)", location)
+        match = re.search(r"\((.*?)\)", location)  # Update to handle multiple words inside parentheses
         return match.group(1).strip() if match else None
 
     def parse_time(self, time_string: str) -> str:
@@ -60,7 +60,7 @@ class FlightHosting(commands.Cog):
             await ctx.send("❌ All parameters are required: `channel`, `flight_number`, `aircraft`, `departure`, `destination`, `event_link`, and `timestamp`.")
             return
 
-        # Parse departure and destination
+        # Parse departure and destination (handles multiple words inside parentheses)
         departure = self.parse_location(departure)
         destination = self.parse_location(destination)
         if departure is None or destination is None:
