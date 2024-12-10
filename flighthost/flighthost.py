@@ -3,6 +3,7 @@ from discord.ext import commands
 import uuid
 import time
 import re
+import pytz  # For timezone handling
 import parsedatetime  # To parse natural language dates
 
 from core import checks
@@ -13,7 +14,8 @@ class FlightHosting(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.flights = {}  # Store flights in the format {flight_id: flight_data}
-        self.cal = parsedatetime.Calendar()  # Initialize the parsedatetime Calendar object
+        self.cal = parsedatetime.Calendar()  # Initialize parsedatetime Calendar object
+        self.timezone = pytz.timezone("Asia/Kuala_Lumpur")  # GMT+8 timezone
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.MODERATOR)
@@ -34,8 +36,8 @@ class FlightHosting(commands.Cog):
         - channel: The channel where the flight message will be posted (mention or ID).
         - flight_number: The flight number (e.g., LMD 917).
         - aircraft: The aircraft model (e.g., B737-800).
-        - departure: Departure location (single-word or (multi-word) with parentheses).
-        - destination: Destination location (single-word or (multi-word) with parentheses).
+        - departure: Departure location (must be in parentheses, e.g., `(Penang)` or `(Kuantan Airport)`).
+        - destination: Destination location (must be in parentheses, e.g., `(Penang)` or `(Kuantan Airport)`).
         - event_link: Event link associated with the flight.
         - timestamp: Natural language date, Discord timestamp (<t:epoch:style>), or raw epoch time.
         """
@@ -49,7 +51,7 @@ class FlightHosting(commands.Cog):
         destination = self.parse_location(destination)
         if departure is None or destination is None:
             await ctx.send(
-                "❌ Invalid format for `departure` or `destination`. Use single-word locations (e.g., `Penang`) or enclose multi-word locations in parentheses (e.g., `(Kuantan Airport)`)."
+                "❌ Invalid format for `departure` or `destination`. Both must be enclosed in parentheses, e.g., `(Penang)` or `(Kuantan Airport)`."
             )
             return
 
@@ -72,7 +74,9 @@ class FlightHosting(commands.Cog):
         else:  # Attempt to parse as natural language
             try:
                 time_struct, _ = self.cal.parse(timestamp)
-                epoch_time = int(time.mktime(time_struct))  # Convert to epoch time
+                naive_time = time.mktime(time_struct)  # Convert to naive epoch time
+                local_time = self.timezone.localize(time.localtime(naive_time))  # Apply GMT+8
+                epoch_time = int(local_time.timestamp())  # Convert to epoch
                 timestamp = f"<t:{epoch_time}:F>"  # Convert to Discord timestamp format
             except Exception:
                 await ctx.send("❌ Invalid timestamp format. Provide a valid natural language date, Discord timestamp (e.g., `<t:1702204800:F>`), or raw epoch time.")
@@ -106,7 +110,7 @@ class FlightHosting(commands.Cog):
         embed.add_field(name="\u2708 Flight Number", value=f"**{flight_number}**", inline=False)
         embed.add_field(name="Location", value=f"{departure} \u2794 {destination}", inline=False)
         embed.add_field(name="Aircraft", value=aircraft, inline=False)
-        embed.add_field(name="Departure Time", value=f"{timestamp} (parsed)", inline=False)
+        embed.add_field(name="Departure Time", value=f"{timestamp} *(converted to your timezone)*", inline=False)
         embed.add_field(name="Book Your Flight At", value=f"https://sites.google.com/view/airasiagroupbhd/flights", inline=False)
         embed.add_field(name="Event Link", value=event_link, inline=False)
 
@@ -117,17 +121,36 @@ class FlightHosting(commands.Cog):
         await ctx.send(f"✅ Flight created successfully. Flight ID has been sent privately to you.")
         await ctx.author.send(f"✈️ Flight ID for `{flight_number}`: `{flight_id}`.")
 
+    @commands.command()
+    @checks.has_permissions(PermissionLevel.MODERATOR)
+    async def flightlist(self, ctx):
+        """
+        List all created flights.
+        """
+        if not self.flights:
+            await ctx.send("❌ No flights have been created yet.")
+            return
+
+        embed = discord.Embed(title="Flight List", color=discord.Color.red())
+
+        for flight_id, flight_data in self.flights.items():
+            embed.add_field(
+                name=f"{flight_data['flight_number']} ({flight_id})",
+                value=f"**{flight_data['departure']} \u2794 {flight_data['destination']}**\nAircraft: {flight_data['aircraft']}\nDeparture: {flight_data['departure_time']}\nChannel: <#{flight_data['channel_id']}>",
+                inline=False,
+            )
+
+        await ctx.send(embed=embed)
+
     def parse_location(self, location: str) -> str:
         """
         Parse a location string.
-        - If the string is in parentheses (e.g., `(Kuantan Airport)`), return the inner value.
-        - If the string is a single word (e.g., `Penang`), return it as is.
-        - Return None for invalid formats.
+        - Ensure the string is enclosed in parentheses (e.g., `(Penang)` or `(Kuantan Airport)`).
+        - Return the inner value without parentheses or extra spaces.
+        - Return None if the format is invalid.
         """
         if location.startswith("(") and location.endswith(")"):
             return location[1:-1].strip()  # Remove parentheses and strip extra spaces
-        elif " " not in location:  # Single word
-            return location.strip()
         return None  # Invalid format
 
 
