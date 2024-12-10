@@ -140,6 +140,7 @@ class FlightHosting(commands.Cog):
         embed.add_field(name="Departure", value=departure, inline=True)
         embed.add_field(name="Destination", value=destination, inline=True)
         embed.add_field(name="Departure Time", value=f"{timestamp} *(converted to your timezone)*", inline=False)
+        embed.add_field(name="Book Your Flight At", value=f"https://sites.google.com/view/airasiagroupbhd/flights", inline=False)
         embed.add_field(name="Event Link", value=event_link, inline=False)
 
         await channel.send(embed=embed)
