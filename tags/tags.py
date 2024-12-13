@@ -70,7 +70,7 @@ class Tags(commands.Cog):
         image_url = parts[1].strip() if len(parts) > 1 else None
 
         # Validate image URL if provided
-        if image_url and not re.match(r"^(https?://.*\\.(?:png|jpg|jpeg|gif|webp))$", image_url):
+        if image_url and not re.match(r"^(https?://[\\w\\-\\.]+\\.[a-z]{2,6}\\S*\\.(?:png|jpg|jpeg|gif|webp))$", image_url):
             await ctx.send("❌ | The provided image URL is invalid. Please provide a valid image URL (e.g., ending with .png, .jpg, etc.).")
             return
 
