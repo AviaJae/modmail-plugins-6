@@ -24,13 +24,13 @@ class Tags(commands.Cog):
             if tag_data:
                 response = ""
 
-                if "message" in tag_data and tag_data["message"]:
-                    response += tag_data["message"]
+    if "message" in tag_data and tag_data["message"]:
+    response += tag_data["message"]
 
-                if "image_url" in tag_data and tag_data["image_url"]:
-                    response += f"\n{tag_data['image_url']}"
-
-                await ctx.send(response)
+    if "image_url" in tag_data and tag_data["image_url"]:
+    # Enclose the URL in < > to prevent embedding
+    response += f"\n<{tag_data['image_url']}>"
+               await ctx.send(response)
             else:
                 await ctx.send(f"❌ | Tag `{name}` not found.")
         else:
