@@ -22,15 +22,15 @@ class Tags(commands.Cog):
             # Retrieve the tag
             tag_data = self.tags.get(name)
             if tag_data:
-                embed = discord.Embed(color=discord.Color.blue())
+                response = ""
 
                 if "message" in tag_data and tag_data["message"]:
-                    embed.description = tag_data["message"]
+                    response += tag_data["message"]
 
                 if "image_url" in tag_data and tag_data["image_url"]:
-                    embed.set_image(url=tag_data["image_url"])
+                    response += f"\n{tag_data['image_url']}"
 
-                await ctx.send(embed=embed)
+                await ctx.send(response)
             else:
                 await ctx.send(f"❌ | Tag `{name}` not found.")
         else:
@@ -44,12 +44,7 @@ class Tags(commands.Cog):
         """
         if self.tags:
             tag_list = "\n".join(f"- `{tag}`" for tag in self.tags.keys())
-            embed = discord.Embed(
-                title="Available Tags",
-                description=tag_list,
-                color=discord.Color.blue()
-            )
-            await ctx.send(embed=embed)
+            await ctx.send(f"**Available Tags:**\n{tag_list}")
         else:
             await ctx.send("❌ | No tags available.")
 
