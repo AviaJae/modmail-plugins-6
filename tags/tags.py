@@ -8,7 +8,7 @@ class Tags(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: commands.Bot = bot
         # Dictionary to store tags
-        self.tags = {}  # Format: {tag_name: tag_message}
+        self.tags = {}  # Format: {tag_name: {"message": str, "image_url": str}}
 
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
@@ -18,9 +18,17 @@ class Tags(commands.Cog):
         """
         if name:
             # Retrieve the tag
-            tag_message = self.tags.get(name)
-            if tag_message:
-                await ctx.send(tag_message)
+            tag_data = self.tags.get(name)
+            if tag_data:
+                embed = discord.Embed(color=discord.Color.blue())
+
+                if "message" in tag_data and tag_data["message"]:
+                    embed.description = tag_data["message"]
+
+                if "image_url" in tag_data and tag_data["image_url"]:
+                    embed.set_image(url=tag_data["image_url"])
+
+                await ctx.send(embed=embed)
             else:
                 await ctx.send(f"❌ | Tag `{name}` not found.")
         else:
@@ -45,15 +53,21 @@ class Tags(commands.Cog):
 
     @tag.command()
     @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
-    async def add(self, ctx: commands.Context, name: str, *, message: str):
+    async def add(self, ctx: commands.Context, name: str, *, content: str):
         """
-        Add a new tag
+        Add a new tag with optional image URL.
+        Usage: ?tag add <name> <message> [image_url]
         """
         if name in self.tags:
             await ctx.send(f"❌ | A tag with the name `{name}` already exists.")
             return
 
-        self.tags[name] = message
+        # Extract message and optional image URL
+        parts = content.split(" | ")
+        message = parts[0].strip() if parts else None
+        image_url = parts[1].strip() if len(parts) > 1 else None
+
+        self.tags[name] = {"message": message, "image_url": image_url}
         await ctx.send(f"✅ | Tag `{name}` added successfully!")
 
     @tag.command()
