@@ -4,6 +4,8 @@ from discord.ext import commands
 from core import checks
 from core.models import PermissionLevel
 
+import re
+
 class Tags(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: commands.Bot = bot
@@ -66,6 +68,11 @@ class Tags(commands.Cog):
         parts = content.split(" | ")
         message = parts[0].strip() if parts else None
         image_url = parts[1].strip() if len(parts) > 1 else None
+
+        # Validate image URL if provided
+        if image_url and not re.match(r"^(https?://.*\\.(?:png|jpg|jpeg|gif|webp))$", image_url):
+            await ctx.send("❌ | The provided image URL is invalid. Please provide a valid image URL (e.g., ending with .png, .jpg, etc.).")
+            return
 
         self.tags[name] = {"message": message, "image_url": image_url}
         await ctx.send(f"✅ | Tag `{name}` added successfully!")
